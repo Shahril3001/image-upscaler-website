@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Image Upscaler</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --secondary: #3f37c9;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --success: #4bb543;
+      --error: #ff3333;
+      --border-radius: 12px;
+      --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: #f5f7ff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 0 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--primary);
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    #drop-area {
+      width: 100%;
+      max-width: 800px;
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      text-align: center;
+      box-shadow: var(--box-shadow);
+      transition: var(--transition);
+      border: 2px dashed var(--light-gray);
+      cursor: pointer;
+    }
+
+    #drop-area.highlight {
+      border-color: var(--primary);
+      background-color: rgba(67, 97, 238, 0.05);
+    }
+
+    #drop-area .icon {
+      font-size: 3rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    #drop-area h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--dark);
+    }
+
+    #drop-area p {
+      color: var(--gray);
+      margin-bottom: 1.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      border-radius: var(--border-radius);
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background-color: var(--light-gray);
+      color: var(--dark);
+    }
+
+    .btn-secondary:hover {
+      background-color: #d1d7e0;
+    }
+
+    .btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .preview-container {
+      width: 100%;
+      max-width: 800px;
+      display: none;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .preview-card {
+      background: white;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--box-shadow);
+      position: relative;
+    }
+
+    .preview-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+
+    .preview-info {
+      padding: 0.75rem;
+    }
+
+    .preview-info h3 {
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .preview-info p {
+      font-size: 0.8rem;
+      color: var(--gray);
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: var(--error);
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .preview-card:hover .remove-btn {
+      opacity: 1;
+    }
+
+    .progress-container {
+      width: 100%;
+      max-width: 800px;
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: var(--box-shadow);
+      display: none;
+      margin-bottom: 2rem;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .progress-bar {
+      height: 10px;
+      background: var(--light-gray);
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .progress-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem;
+      border-radius: 5px;
+      background: var(--light-gray);
+    }
+
+    .progress-item.success {
+      background: rgba(75, 181, 67, 0.1);
+      color: var(--success);
+    }
+
+    .progress-item.error {
+      background: rgba(255, 51, 51, 0.1);
+      color: var(--error);
+    }
+
+    .results-container {
+      width: 100%;
+      max-width: 800px;
+      display: none;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .result-card {
+      background: white;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--box-shadow);
+    }
+
+    .result-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+
+    .result-info {
+      padding: 1rem;
+    }
+
+    .result-info h3 {
+      margin-bottom: 0.5rem;
+    }
+
+    .result-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gray);
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-loading .spinner {
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      .preview-grid, .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AI Image Upscaler</h1>
+      <p class="subtitle">Enhance your images with our powerful AI upscaling technology</p>
+    </header>
+
+    <div class="upload-container">
+      <div id="drop-area">
+        <div class="icon">
+          <i class="fas fa-cloud-upload-alt"></i>
+        </div>
+        <h2>Drag & Drop Your Images</h2>
+        <p>Supports JPG, PNG, WEBP up to 20MB</p>
+        <button id="fileSelectBtn" class="btn btn-primary">
+          <i class="fas fa-folder-open"></i> Select Images
+        </button>
+        <input type="file" id="fileElem" accept="image/*" multiple>
+      </div>
+
+      <div class="preview-container" id="preview-container">
+        <div class="preview-header">
+          <h2>Selected Images</h2>
+          <button id="clearAllBtn" class="btn btn-secondary">
+            <i class="fas fa-trash"></i> Clear All
+          </button>
+        </div>
+        <div class="preview-grid" id="preview-grid"></div>
+        <button id="upscaleBtn" class="btn btn-primary" style="margin-top: 1.5rem;">
+          <i class="fas fa-magic"></i> Upscale All Images
+        </button>
+      </div>
+
+      <div class="progress-container" id="progress-container">
+        <div class="progress-header">
+          <h2>Upscaling Progress</h2>
+          <span id="progress-status">0/0 completed</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-details" id="progress-details"></div>
+      </div>
+
+      <div class="results-container" id="results-container">
+        <h2>Upscaled Results</h2>
+        <div class="results-grid" id="results-grid"></div>
+        <div class="empty-state" id="empty-results" style="display: none;">
+          <p>No upscaled images yet. Upload some images to begin.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // DOM Elements
+      const dropArea = document.getElementById('drop-area');
+      const fileInput = document.getElementById('fileElem');
+      const fileSelectBtn = document.getElementById('fileSelectBtn');
+      const previewContainer = document.getElementById('preview-container');
+      const previewGrid = document.getElementById('preview-grid');
+      const clearAllBtn = document.getElementById('clearAllBtn');
+      const upscaleBtn = document.getElementById('upscaleBtn');
+      const progressContainer = document.getElementById('progress-container');
+      const progressFill = document.getElementById('progress-fill');
+      const progressStatus = document.getElementById('progress-status');
+      const progressDetails = document.getElementById('progress-details');
+      const resultsContainer = document.getElementById('results-container');
+      const resultsGrid = document.getElementById('results-grid');
+      const emptyResults = document.getElementById('empty-results');
+
+      // State
+      let files = [];
+      let processingQueue = [];
+      let completedJobs = 0;
+
+      // Event Listeners
+      fileSelectBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', handleFileSelect);
+      clearAllBtn.addEventListener('click', clearAllFiles);
+      upscaleBtn.addEventListener('click', startUpscaling);
+
+      // Drag and Drop Events
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+      });
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+      });
+
+      dropArea.addEventListener('drop', handleDrop, false);
+
+      // Functions
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function highlight() {
+        dropArea.classList.add('highlight');
+      }
+
+      function unhighlight() {
+        dropArea.classList.remove('highlight');
+      }
+
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        handleFiles(dt.files);
+      }
+
+      function handleFileSelect(e) {
+        handleFiles(e.target.files);
+        fileInput.value = ''; // Reset to allow selecting same files again
+      }
+
+      function handleFiles(fileList) {
+        const newFiles = Array.from(fileList).filter(file => 
+          file.type.startsWith('image/') && file.size <= 20 * 1024 * 1024
+        );
+
+        if (newFiles.length === 0) {
+          showError('Please select valid image files (JPG, PNG, WEBP) under 20MB');
+          return;
+        }
+
+        files = [...files, ...newFiles];
+        updatePreview();
+      }
+
+      function updatePreview() {
+        if (files.length === 0) {
+          previewContainer.style.display = 'none';
+          return;
+        }
+
+        previewContainer.style.display = 'block';
+        previewGrid.innerHTML = '';
+
+        files.forEach((file, index) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const previewCard = document.createElement('div');
+            previewCard.className = 'preview-card';
+            previewCard.innerHTML = `
+              <img src="${e.target.result}" alt="${file.name}">
+              <div class="preview-info">
+                <h3>${file.name}</h3>
+                <p>${formatFileSize(file.size)}</p>
+              </div>
+              <button class="remove-btn" data-index="${index}">
+                <i class="fas fa-times"></i>
+              </button>
+            `;
+            previewGrid.appendChild(previewCard);
+
+            // Add event listener to the remove button
+            previewCard.querySelector('.remove-btn').addEventListener('click', (e) => {
+              e.stopPropagation();
+              removeFile(index);
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function removeFile(index) {
+        files.splice(index, 1);
+        updatePreview();
+      }
+
+      function clearAllFiles() {
+        files = [];
+        updatePreview();
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+
+      function showError(message) {
+        const errorEl = document.createElement('div');
+        errorEl.className = 'progress-item error';
+        errorEl.innerHTML = `
+          <span><i class="fas fa-exclamation-circle"></i> ${message}</span>
+          <span>Failed</span>
+        `;
+        progressDetails.appendChild(errorEl);
+      }
+
+      function showSuccess(message) {
+        const successEl = document.createElement('div');
+        successEl.className = 'progress-item success';
+        successEl.innerHTML = `
+          <span><i class="fas fa-check-circle"></i> ${message}</span>
+          <span>Completed</span>
+        `;
+        progressDetails.appendChild(successEl);
+      }
+
+      async function startUpscaling() {
+        if (files.length === 0) {
+          showError('No images selected for upscaling');
+          return;
+        }
+
+        // Reset progress
+        processingQueue = [...files];
+        completedJobs = 0;
+        progressDetails.innerHTML = '';
+        progressFill.style.width = '0%';
+        progressStatus.textContent = `0/${files.length} completed`;
+        
+        // Show progress container
+        progressContainer.style.display = 'block';
+        previewContainer.style.display = 'none';
+        upscaleBtn.disabled = true;
+        upscaleBtn.classList.add('btn-loading');
+        upscaleBtn.innerHTML = `<span class="spinner"></span> Processing...`;
+
+        // Process each file
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const formData = new FormData();
+          formData.append('image', file);
+
+          try {
+            // Create progress item
+            const progressItem = document.createElement('div');
+            progressItem.className = 'progress-item';
+            progressItem.innerHTML = `
+              <span><i class="fas fa-image"></i> ${file.name}</span>
+              <span>Processing...</span>
+            `;
+            progressDetails.appendChild(progressItem);
+
+            const res = await fetch('http://localhost:3000/upscale', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!res.ok) throw new Error('Upscale failed');
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+
+            // Update progress
+            completedJobs++;
+            const progressPercent = (completedJobs / files.length) * 100;
+            progressFill.style.width = `${progressPercent}%`;
+            progressStatus.textContent = `${completedJobs}/${files.length} completed`;
+
+            // Update progress item
+            progressItem.classList.add('success');
+            progressItem.innerHTML = `
+              <span><i class="fas fa-check-circle"></i> ${file.name}</span>
+              <span>Completed</span>
+            `;
+
+            // Add to results
+            addResult(file.name, url, blob.size);
+
+          } catch (err) {
+            console.error('Error upscaling image:', err);
+            completedJobs++;
+            const progressPercent = (completedJobs / files.length) * 100;
+            progressFill.style.width = `${progressPercent}%`;
+            progressStatus.textContent = `${completedJobs}/${files.length} completed`;
+
+            // Update progress item with error
+            const errorItem = progressDetails.querySelector(`.progress-item:last-child`);
+            if (errorItem) {
+              errorItem.classList.add('error');
+              errorItem.innerHTML = `
+                <span><i class="fas fa-exclamation-circle"></i> ${file.name}</span>
+                <span>Failed: ${err.message}</span>
+              `;
+            }
+          }
+        }
+
+        // Reset button state
+        upscaleBtn.disabled = false;
+        upscaleBtn.classList.remove('btn-loading');
+        upscaleBtn.innerHTML = `<i class="fas fa-magic"></i> Upscale All Images`;
+
+        // Show results if any
+        if (resultsGrid.children.length > 0) {
+          resultsContainer.style.display = 'block';
+          emptyResults.style.display = 'none';
+        }
+      }
+
+      function addResult(originalName, url, size) {
+        const resultId = `result-${Date.now()}`;
+        const resultCard = document.createElement('div');
+        resultCard.className = 'result-card';
+        resultCard.id = resultId;
+        resultCard.innerHTML = `
+          <img src="${url}" alt="Upscaled ${originalName}">
+          <div class="result-info">
+            <h3>${originalName}</h3>
+            <div class="result-meta">
+              <span>Upscaled 4x</span>
+              <span>${formatFileSize(size)}</span>
+            </div>
+            <div class="result-actions">
+              <a href="${url}" download="upscaled_${originalName}" class="btn btn-primary btn-sm">
+                <i class="fas fa-download"></i> Download
+              </a>
+              <button class="btn btn-secondary btn-sm view-original-btn">
+                <i class="fas fa-eye"></i> Compare
+              </button>
+            </div>
+          </div>
+        `;
+        resultsGrid.appendChild(resultCard);
+
+        // Add compare functionality
+        resultCard.querySelector('.view-original-btn').addEventListener('click', () => {
+          const originalFile = files.find(f => f.name === originalName);
+          if (originalFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              showComparison(e.target.result, url, originalName);
+            };
+            reader.readAsDataURL(originalFile);
+          }
+        });
+      }
+
+      function showComparison(originalSrc, upscaledSrc, filename) {
+        const modal = document.createElement('div');
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.zIndex = '1000';
+        modal.style.padding = '2rem';
+        modal.style.overflow = 'auto';
+
+        modal.innerHTML = `
+          <div style="max-width: 1000px; width: 100%; background: white; border-radius: var(--border-radius); overflow: hidden;">
+            <div style="padding: 1rem; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center;">
+              <h3>${filename}</h3>
+              <button id="closeModalBtn" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem;">
+              <div>
+                <h4 style="text-align: center; margin-bottom: 0.5rem;">Original</h4>
+                <img src="${originalSrc}" style="width: 100%; max-height: 500px; object-fit: contain;">
+              </div>
+              <div>
+                <h4 style="text-align: center; margin-bottom: 0.5rem;">Upscaled (4x)</h4>
+                <img src="${upscaledSrc}" style="width: 100%; max-height: 500px; object-fit: contain;">
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.querySelector('#closeModalBtn').addEventListener('click', () => {
+          document.body.removeChild(modal);
+        });
+      }
+
+      // Initialize
+      if (resultsGrid.children.length === 0) {
+        emptyResults.style.display = 'block';
+      } else {
+        resultsContainer.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
